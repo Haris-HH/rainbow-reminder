@@ -62,6 +62,13 @@ create table if not exists public.deliverer_villages (
   primary key (deliverer_id, village_id)
 );
 
+-- --------- deliverer_days (คนส่ง <-> วันที่รับผิดชอบ, เมื่อ mode = day) ---------
+create table if not exists public.deliverer_days (
+  deliverer_id uuid not null references public.deliverers(id) on delete cascade,
+  day_of_week smallint not null check (day_of_week between 0 and 6),
+  primary key (deliverer_id, day_of_week)
+);
+
 -- --------- delivery_records (การส่งน้ำ / ยอดค้าง) ---------
 -- village_id ใช้เมื่อ deliverer mode = village
 -- day_of_week (0=อาทิตย์..6=เสาร์) ใช้เมื่อ mode = day
@@ -94,6 +101,7 @@ alter table public.profiles enable row level security;
 alter table public.villages enable row level security;
 alter table public.deliverers enable row level security;
 alter table public.deliverer_villages enable row level security;
+alter table public.deliverer_days enable row level security;
 alter table public.delivery_records enable row level security;
 
 -- helper: เช็คว่า current user เป็น admin
@@ -132,7 +140,7 @@ create policy profiles_admin_delete on public.profiles
 do $$
 declare t text;
 begin
-  foreach t in array array['villages','deliverers','deliverer_villages','delivery_records']
+  foreach t in array array['villages','deliverers','deliverer_villages','deliverer_days','delivery_records']
   loop
     execute format('drop policy if exists %I_all on public.%I', t, t);
     execute format(

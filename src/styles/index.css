@@ -262,6 +262,8 @@ a {
 .list-item .body {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 .list-item .title {
   font-weight: 600;
@@ -274,6 +276,26 @@ a {
 .list-item .chev {
   color: var(--text-muted);
   font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+/* delete/remove icon button inside a list row */
+.row-del {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+}
+.row-del:hover {
+  background: color-mix(in srgb, var(--crimson) 16%, transparent);
+  color: var(--crimson);
 }
 
 .avatar {
@@ -586,6 +608,58 @@ a {
 .rec-table .num {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------- grouped records (by house) ---------- */
+.rec-group {
+  padding: 12px 14px;
+}
+.rec-group-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 4px;
+}
+.rec-house {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 1.02rem;
+  flex-wrap: wrap;
+}
+.rec-group-sum {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+.rec-out {
+  color: var(--crimson);
+}
+.rec-count {
+  font-size: 0.74rem;
+  font-weight: 500;
+}
+.rec-house .rec-count {
+  margin-left: 2px;
+}
+/* table inside a group card = borderless, transparent */
+.rec-table.rec-inner {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  margin-top: 6px;
+}
+.rec-inner td {
+  padding: 9px 6px;
+}
+.rec-inner tbody tr:hover {
+  background: transparent;
 }
 
 .error-text {

@@ -136,6 +136,13 @@ export function Login() {
           မြန်မာ
         </button>
       </div>
+
+      <p
+        className="muted login-anim"
+        style={{ textAlign: 'center', marginTop: 18, fontSize: '0.78rem' }}
+      >
+        v{__APP_VERSION__}
+      </p>
     </div>
   )
 }

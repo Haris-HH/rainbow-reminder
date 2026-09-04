@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useSettings } from '@/contexts/SettingsContext'
-import { Check, RotateCcw, Trash2 } from 'lucide-react'
+import { Check, RotateCcw, Trash2, Search, Home } from 'lucide-react'
 import { Layout } from '@/components/Layout'
 import { Modal } from '@/components/Modal'
 import { Fab } from '@/components/Fab'
@@ -43,6 +43,7 @@ export function RecordList() {
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState<FormState>(blank())
   const [saving, setSaving] = useState(false)
+  const [search, setSearch] = useState('')
 
   const load = useCallback(async () => {
     if (!id) return
@@ -137,9 +138,53 @@ export function RecordList() {
       ? dayName(day, lang)
       : t('addRecord')
 
-  const outstanding = records
+  // filter ตามคำค้น (บ้านเลขที่ / หมายเหตุ)
+  const q = search.trim().toLowerCase()
+  const filtered = q
+    ? records.filter(
+        (r) =>
+          (r.house_no || '').toLowerCase().includes(q) ||
+          (r.note || '').toLowerCase().includes(q)
+      )
+    : records
+
+  // group ตามบ้านเลขที่ + คิดยอดรวมของแต่ละกลุ่ม
+  const groupMap = new Map<string, DeliveryRecord[]>()
+  for (const r of filtered) {
+    const key = r.house_no || '-'
+    if (!groupMap.has(key)) groupMap.set(key, [])
+    groupMap.get(key)!.push(r)
+  }
+  const groups = [...groupMap.entries()].sort((a, b) =>
+    a[0].localeCompare(b[0], undefined, { numeric: true })
+  )
+
+  const outstanding = filtered
     .filter((r) => !r.paid)
     .reduce((s, r) => s + Number(r.amount), 0)
+
+  const actionCell = (r: DeliveryRecord) => (
+    <td
+      className="num"
+      onClick={(e) => e.stopPropagation()}
+      style={{ whiteSpace: 'nowrap' }}
+    >
+      <button
+        className={`btn btn-sm ${r.paid ? 'btn-ghost' : 'btn-action'}`}
+        onClick={() => togglePaid(r)}
+        aria-label={r.paid ? t('markUnpaid') : t('markPaid')}
+      >
+        {r.paid ? <RotateCcw size={15} aria-hidden /> : <Check size={15} aria-hidden />}
+      </button>{' '}
+      <button
+        className="btn btn-sm btn-ghost"
+        onClick={() => softDelete(r)}
+        aria-label={t('delete')}
+      >
+        <Trash2 size={15} aria-hidden />
+      </button>
+    </td>
+  )
 
   return (
     <Layout back title={title}>
@@ -148,61 +193,75 @@ export function RecordList() {
         <div className="value">{formatMoney(outstanding, currency)}</div>
       </div>
 
+      {!loading && records.length > 0 && (
+        <div className="search-bar">
+          <Search size={18} className="muted" aria-hidden />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t('searchRecord')}
+            inputMode="text"
+          />
+        </div>
+      )}
+
       {loading ? (
         <div className="center">{t('loading')}</div>
       ) : records.length === 0 ? (
         <div className="center">{t('empty')}</div>
+      ) : groups.length === 0 ? (
+        <div className="center">{t('empty')}</div>
       ) : (
-        <table className="rec-table">
-          <thead>
-            <tr>
-              <th>{t('houseNo')}</th>
-              <th className="num">{t('quantity')}</th>
-              <th className="num">{t('amount')}</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {records.map((r) => (
-              <tr key={r.id} onClick={() => openEdit(r)}>
-                <td>
-                  {r.house_no || '-'}
-                  <div>
-                    <span className={`badge ${r.paid ? 'paid' : 'unpaid'}`}>
-                      {r.paid ? t('paid') : t('unpaid')}
-                    </span>
-                  </div>
-                </td>
-                <td className="num">{r.quantity}</td>
-                <td className="num">{formatMoney(Number(r.amount), currency)}</td>
-                <td
-                  className="num"
-                  onClick={(e) => e.stopPropagation()}
-                  style={{ whiteSpace: 'nowrap' }}
-                >
-                  <button
-                    className={`btn btn-sm ${r.paid ? 'btn-ghost' : 'btn-action'}`}
-                    onClick={() => togglePaid(r)}
-                    aria-label={r.paid ? t('markUnpaid') : t('markPaid')}
+        groups.map(([house, rows]) => {
+          const gTotal = rows.reduce((s, r) => s + Number(r.amount), 0)
+          const gOutstanding = rows
+            .filter((r) => !r.paid)
+            .reduce((s, r) => s + Number(r.amount), 0)
+          return (
+            <div key={house} className="card rec-group">
+              <div className="rec-group-head">
+                <span className="rec-house">
+                  <Home size={16} aria-hidden /> {house}
+                  <span className="muted rec-count">
+                    {rows.length} {t('records')}
+                  </span>
+                </span>
+                <span className="rec-group-sum">
+                  <span
+                    className={gOutstanding > 0 ? 'rec-out' : 'muted'}
+                    style={{ fontWeight: 800 }}
                   >
-                    {r.paid ? (
-                      <RotateCcw size={15} aria-hidden />
-                    ) : (
-                      <Check size={15} aria-hidden />
-                    )}
-                  </button>{' '}
-                  <button
-                    className="btn btn-sm btn-ghost"
-                    onClick={() => softDelete(r)}
-                    aria-label={t('delete')}
-                  >
-                    <Trash2 size={15} aria-hidden />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    {formatMoney(gOutstanding, currency)}
+                  </span>
+                  <span className="muted rec-count">
+                    {t('groupTotal')} {formatMoney(gTotal, currency)}
+                  </span>
+                </span>
+              </div>
+              <table className="rec-table rec-inner">
+                <tbody>
+                  {rows.map((r) => (
+                    <tr key={r.id} onClick={() => openEdit(r)}>
+                      <td>
+                        {r.delivered_at}
+                        <div>
+                          <span className={`badge ${r.paid ? 'paid' : 'unpaid'}`}>
+                            {r.paid ? t('paid') : t('unpaid')}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="num">{r.quantity}</td>
+                      <td className="num">
+                        {formatMoney(Number(r.amount), currency)}
+                      </td>
+                      {actionCell(r)}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        })
       )}
 
       <Fab onClick={openAdd} />
