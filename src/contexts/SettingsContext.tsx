@@ -6,16 +6,18 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import type { Currency, Lang, Theme } from '@/types/database'
+import type { Currency, Lang, Style, Theme } from '@/types/database'
 import { t as translate, type StringKey } from '@/i18n/strings'
 
 interface SettingsValue {
   theme: Theme
   lang: Lang
   currency: Currency
+  style: Style
   setTheme: (v: Theme) => void
   setLang: (v: Lang) => void
   setCurrency: (v: Currency) => void
+  setStyle: (v: Style) => void
   t: (key: StringKey) => string
 }
 
@@ -35,11 +37,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [currency, setCurrencyState] = useState<Currency>(() =>
     read('currency', 'THB')
   )
+  // default สไตล์ = Glassmorphism / iOS
+  const [style, setStyleState] = useState<Style>(() => read('style', 'glass'))
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
+    document.documentElement.setAttribute('data-style', style)
     document.documentElement.setAttribute('lang', lang)
-  }, [theme, lang])
+  }, [theme, lang, style])
 
   const setTheme = (v: Theme) => {
     setThemeState(v)
@@ -65,18 +70,28 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       /* ignore */
     }
   }
+  const setStyle = (v: Style) => {
+    setStyleState(v)
+    try {
+      localStorage.setItem('style', v)
+    } catch {
+      /* ignore */
+    }
+  }
 
   const value = useMemo<SettingsValue>(
     () => ({
       theme,
       lang,
       currency,
+      style,
       setTheme,
       setLang,
       setCurrency,
+      setStyle,
       t: (key) => translate(key, lang),
     }),
-    [theme, lang, currency]
+    [theme, lang, currency, style]
   )
 
   return (

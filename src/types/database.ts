@@ -3,6 +3,7 @@ export type AppRole = 'admin' | 'staff'
 export type DelivererMode = 'village' | 'day'
 export type Lang = 'th' | 'my'
 export type Theme = 'light' | 'dark'
+export type Style = 'glass' | 'solid' | 'vibrant'
 
 export interface Profile {
   id: string

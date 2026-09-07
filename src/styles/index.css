@@ -73,6 +73,50 @@
   --topbar-bg: rgba(18, 12, 28, 0.72);
 }
 
+/* ============================================================
+   Style variants (data-style) — default = glass (:root above)
+   ============================================================ */
+
+/* --- Solid: opaque flat surfaces, no blur, faint aurora --- */
+:root[data-style='solid'] {
+  --glass: #ffffff;
+  --glass-strong: #ffffff;
+  --glass-border: #e4e0ee;
+  --glass-hi: transparent;
+  --blur: 0px;
+  --aur-1: rgba(4, 115, 239, 0.1);
+  --aur-2: rgba(43, 167, 221, 0.1);
+  --aur-3: rgba(175, 21, 62, 0.08);
+}
+:root[data-theme='dark'][data-style='solid'] {
+  --glass: #1b1528;
+  --glass-strong: #241c37;
+  --glass-border: #362c50;
+  --glass-hi: transparent;
+  --blur: 0px;
+  --aur-1: rgba(4, 115, 239, 0.14);
+  --aur-2: rgba(43, 167, 221, 0.1);
+  --aur-3: rgba(175, 21, 62, 0.14);
+}
+
+/* --- Vibrant: more translucent, bold colorful aurora --- */
+:root[data-style='vibrant'] {
+  --glass: rgba(255, 255, 255, 0.5);
+  --glass-strong: rgba(255, 255, 255, 0.7);
+  --blur: 24px;
+  --aur-1: rgba(4, 115, 239, 0.44);
+  --aur-2: rgba(43, 167, 221, 0.42);
+  --aur-3: rgba(175, 21, 62, 0.36);
+}
+:root[data-theme='dark'][data-style='vibrant'] {
+  --glass: rgba(38, 28, 58, 0.5);
+  --glass-strong: rgba(48, 36, 70, 0.68);
+  --blur: 24px;
+  --aur-1: rgba(4, 115, 239, 0.5);
+  --aur-2: rgba(43, 167, 221, 0.42);
+  --aur-3: rgba(175, 21, 62, 0.48);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -485,6 +529,49 @@ a {
   background: var(--glass-strong);
   color: var(--primary);
   box-shadow: var(--sh-1);
+}
+
+/* ---------- style picker (vertical) ---------- */
+.style-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.style-opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 13px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.style-opt-label {
+  flex: 1;
+}
+.style-opt .style-radio {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--text-muted);
+  flex-shrink: 0;
+}
+.style-opt.on {
+  border-color: var(--action);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--action) 28%, transparent);
+}
+.style-opt.on .style-radio {
+  border-color: var(--action);
+  background:
+    radial-gradient(circle, var(--action) 42%, transparent 46%);
 }
 
 /* ---------- modal (glass sheet) ---------- */

@@ -1,12 +1,19 @@
 import { useNavigate } from 'react-router-dom'
-import { Sun, Moon, Users as UsersIcon, ChevronRight, LogOut } from 'lucide-react'
+import { Sun, Moon, Users as UsersIcon, ChevronRight, LogOut, Sparkles } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { Layout } from '@/components/Layout'
+import type { Style } from '@/types/database'
+
+const STYLES: { value: Style; key: 'styleGlass' | 'styleSolid' | 'styleVibrant' }[] = [
+  { value: 'glass', key: 'styleGlass' },
+  { value: 'solid', key: 'styleSolid' },
+  { value: 'vibrant', key: 'styleVibrant' },
+]
 
 export function Settings() {
-  const { t, theme, setTheme, lang, setLang, currency, setCurrency } =
+  const { t, theme, setTheme, lang, setLang, currency, setCurrency, style, setStyle } =
     useSettings()
   const { signOut, isAdmin, profile } = useAuth()
   const navigate = useNavigate()
@@ -19,6 +26,24 @@ export function Settings() {
   return (
     <Layout title={t('settings')}>
       <div className="card">
+        <div className="field">
+          <label>{t('style')}</label>
+          <div className="style-list">
+            {STYLES.map((s) => (
+              <button
+                key={s.value}
+                type="button"
+                className={`style-opt${style === s.value ? ' on' : ''}`}
+                onClick={() => setStyle(s.value)}
+              >
+                <Sparkles size={17} aria-hidden />
+                <span className="style-opt-label">{t(s.key)}</span>
+                <span className="style-radio" aria-hidden />
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="field">
           <label>{t('theme')}</label>
           <div className="segmented">

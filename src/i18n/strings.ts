@@ -84,6 +84,10 @@ export const dict = {
   theme: { th: 'ธีม', my: 'အသွင်အပြင်' },
   light: { th: 'สว่าง', my: 'အလင်း' },
   dark: { th: 'มืด', my: 'အမှောင်' },
+  style: { th: 'สไตล์', my: 'ပုံစံ' },
+  styleGlass: { th: 'Glassmorphism / iOS', my: 'Glassmorphism / iOS' },
+  styleSolid: { th: 'เรียบ (Solid)', my: 'ရိုးရှင်း (Solid)' },
+  styleVibrant: { th: 'สดใส (Vibrant)', my: 'တောက်ပ (Vibrant)' },
   language: { th: 'ภาษา', my: 'ဘာသာစကား' },
   currency: { th: 'สกุลเงิน', my: 'ငွေကြေး' },
 
