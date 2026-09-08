@@ -13,8 +13,7 @@ const STYLES: { value: Style; key: 'styleGlass' | 'styleSolid' | 'styleVibrant' 
 ]
 
 export function Settings() {
-  const { t, theme, setTheme, lang, setLang, currency, setCurrency, style, setStyle } =
-    useSettings()
+  const { t, theme, setTheme, lang, setLang, style, setStyle } = useSettings()
   const { signOut, isAdmin, profile } = useAuth()
   const navigate = useNavigate()
 
@@ -68,7 +67,7 @@ export function Settings() {
           </div>
         </div>
 
-        <div className="field">
+        <div className="field" style={{ marginBottom: 0 }}>
           <label>{t('language')}</label>
           <div className="segmented">
             <button
@@ -88,30 +87,6 @@ export function Settings() {
               }}
             >
               မြန်မာ
-            </button>
-          </div>
-        </div>
-
-        <div className="field" style={{ marginBottom: 0 }}>
-          <label>{t('currency')}</label>
-          <div className="segmented">
-            <button
-              className={currency === 'THB' ? 'on' : ''}
-              onClick={() => {
-                setCurrency('THB')
-                persist({ currency: 'THB' })
-              }}
-            >
-              ฿ THB
-            </button>
-            <button
-              className={currency === 'MMK' ? 'on' : ''}
-              onClick={() => {
-                setCurrency('MMK')
-                persist({ currency: 'MMK' })
-              }}
-            >
-              K MMK
             </button>
           </div>
         </div>

@@ -114,10 +114,11 @@ export function DelivererDetail() {
     load()
   }
 
+  // ledger: ค้างชำระ = +หนี้ , ชำระแล้ว = -เงินที่จ่ายแล้ว
   function outstandingFor(pred: (r: DeliveryRecord) => boolean): number {
     return records
-      .filter((r) => !r.paid && pred(r))
-      .reduce((s, r) => s + Number(r.amount), 0)
+      .filter(pred)
+      .reduce((s, r) => s + (r.paid ? -Number(r.amount) : Number(r.amount)), 0)
   }
 
   if (loading) {

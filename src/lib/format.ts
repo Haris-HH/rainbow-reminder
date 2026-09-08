@@ -1,16 +1,12 @@
 import type { Currency } from '@/types/database'
 
-const symbols: Record<Currency, string> = {
-  THB: '฿',
-  MMK: 'K',
-}
-
-export function formatMoney(amount: number, currency: Currency): string {
+// รองรับสกุลเงินเดียว: บาท (THB)
+export function formatMoney(amount: number, _currency: Currency = 'THB'): string {
   const n = new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(amount)
-  return currency === 'THB' ? `${symbols.THB}${n}` : `${n} ${symbols.MMK}`
+  return `฿${n}`
 }
 
 export function mapsUrl(

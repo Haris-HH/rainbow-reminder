@@ -693,8 +693,43 @@ a {
   background: color-mix(in srgb, var(--glass-strong) 40%, transparent);
 }
 .rec-table .num {
-  text-align: right;
+  text-align: center;
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------- swipe-to-delete (per house) ---------- */
+.swipe-wrap {
+  position: relative;
+  margin-bottom: 12px;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.swipe-action {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: none;
+  background: linear-gradient(135deg, var(--crimson), #d64268);
+  color: #fff;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+.swipe-front {
+  position: relative;
+  z-index: 1;
+  touch-action: pan-y;
+  will-change: transform;
+}
+.swipe-front .card {
+  margin-bottom: 0;
 }
 
 /* ---------- grouped records (by house) ---------- */
@@ -732,7 +767,7 @@ a {
 .rec-house .rec-count {
   margin-left: 2px;
 }
-/* table inside a group card = borderless, transparent */
+/* table inside a group card = borderless, transparent, คอลัมน์ตรงกันทุกกลุ่ม */
 .rec-table.rec-inner {
   background: transparent;
   border: none;
@@ -741,9 +776,33 @@ a {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   margin-top: 6px;
+  table-layout: fixed;
 }
 .rec-inner td {
   padding: 9px 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* action cell: ปุ่มไม่โดนตัด */
+.rec-inner td.rec-act-cell {
+  overflow: visible;
+  padding-left: 0;
+  padding-right: 2px;
+}
+.rec-act {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+.rec-act-btn {
+  padding: 6px 10px;
+  flex-shrink: 0;
+}
+/* amount column: ชิดซ้าย เลข ฿ เริ่มตรงกันทุกแถว */
+.rec-inner .rec-amt {
+  text-align: left;
+  font-variant-numeric: tabular-nums;
 }
 .rec-inner tbody tr:hover {
   background: transparent;

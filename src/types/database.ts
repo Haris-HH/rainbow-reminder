@@ -1,4 +1,4 @@
-export type Currency = 'THB' | 'MMK'
+export type Currency = 'THB'
 export type AppRole = 'admin' | 'staff'
 export type DelivererMode = 'village' | 'day'
 export type Lang = 'th' | 'my'

@@ -34,9 +34,8 @@ function read<T extends string>(key: string, fallback: T): T {
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => read('theme', 'light'))
   const [lang, setLangState] = useState<Lang>(() => read('lang', 'th'))
-  const [currency, setCurrencyState] = useState<Currency>(() =>
-    read('currency', 'THB')
-  )
+  // รองรับสกุลเงินเดียว: THB (บังคับเสมอ ล้างค่าเก่าที่อาจเป็น MMK)
+  const [currency, setCurrencyState] = useState<Currency>('THB')
   // default สไตล์ = Glassmorphism / iOS
   const [style, setStyleState] = useState<Style>(() => read('style', 'glass'))
 

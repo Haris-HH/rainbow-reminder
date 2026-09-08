@@ -6,6 +6,7 @@ import { Check, RotateCcw, Trash2, Search, Home } from 'lucide-react'
 import { Layout } from '@/components/Layout'
 import { Modal } from '@/components/Modal'
 import { Fab } from '@/components/Fab'
+import { SwipeToDelete } from '@/components/SwipeToDelete'
 import { formatMoney } from '@/lib/format'
 import { dayName } from '@/i18n/strings'
 import type { DeliveryRecord, Village } from '@/types/database'
@@ -132,6 +133,17 @@ export function RecordList() {
     load()
   }
 
+  // ลบทุกรายการของบ้านนี้ (soft delete)
+  async function deleteHouse(rows: DeliveryRecord[]) {
+    if (!confirm(t('confirmDeleteHouse'))) return
+    const ids = rows.map((r) => r.id)
+    await supabase
+      .from('delivery_records')
+      .update({ deleted_at: new Date().toISOString() })
+      .in('id', ids)
+    load()
+  }
+
   const title = villageId
     ? village?.name
     : day !== null
@@ -159,30 +171,36 @@ export function RecordList() {
     a[0].localeCompare(b[0], undefined, { numeric: true })
   )
 
-  const outstanding = filtered
-    .filter((r) => !r.paid)
-    .reduce((s, r) => s + Number(r.amount), 0)
+  // ledger: ค้างชำระ = +หนี้ , ชำระแล้ว = -เงินที่จ่าย
+  const netBalance = (rows: DeliveryRecord[]) =>
+    rows.reduce(
+      (s, r) => s + (r.paid ? -Number(r.amount) : Number(r.amount)),
+      0
+    )
+  // ยอดทั้งหมด = หนี้ที่เรียกเก็บทั้งหมด (รายการที่ค้าง)
+  const sumCharges = (rows: DeliveryRecord[]) =>
+    rows.filter((r) => !r.paid).reduce((s, r) => s + Number(r.amount), 0)
+
+  const outstanding = netBalance(filtered)
 
   const actionCell = (r: DeliveryRecord) => (
-    <td
-      className="num"
-      onClick={(e) => e.stopPropagation()}
-      style={{ whiteSpace: 'nowrap' }}
-    >
-      <button
-        className={`btn btn-sm ${r.paid ? 'btn-ghost' : 'btn-action'}`}
-        onClick={() => togglePaid(r)}
-        aria-label={r.paid ? t('markUnpaid') : t('markPaid')}
-      >
-        {r.paid ? <RotateCcw size={15} aria-hidden /> : <Check size={15} aria-hidden />}
-      </button>{' '}
-      <button
-        className="btn btn-sm btn-ghost"
-        onClick={() => softDelete(r)}
-        aria-label={t('delete')}
-      >
-        <Trash2 size={15} aria-hidden />
-      </button>
+    <td className="rec-act-cell" onClick={(e) => e.stopPropagation()}>
+      <div className="rec-act">
+        <button
+          className={`btn btn-sm rec-act-btn ${r.paid ? 'btn-ghost' : 'btn-action'}`}
+          onClick={() => togglePaid(r)}
+          aria-label={r.paid ? t('markUnpaid') : t('markPaid')}
+        >
+          {r.paid ? <RotateCcw size={15} aria-hidden /> : <Check size={15} aria-hidden />}
+        </button>
+        <button
+          className="btn btn-sm rec-act-btn btn-ghost"
+          onClick={() => softDelete(r)}
+          aria-label={t('delete')}
+        >
+          <Trash2 size={15} aria-hidden />
+        </button>
+      </div>
     </td>
   )
 
@@ -213,13 +231,16 @@ export function RecordList() {
         <div className="center">{t('empty')}</div>
       ) : (
         groups.map(([house, rows]) => {
-          const gTotal = rows.reduce((s, r) => s + Number(r.amount), 0)
-          const gOutstanding = rows
-            .filter((r) => !r.paid)
-            .reduce((s, r) => s + Number(r.amount), 0)
+          const gNet = netBalance(rows)
+          const gCharges = sumCharges(rows)
           return (
-            <div key={house} className="card rec-group">
-              <div className="rec-group-head">
+            <SwipeToDelete
+              key={house}
+              label={t('deleteAll')}
+              onDelete={() => deleteHouse(rows)}
+            >
+              <div className="card rec-group">
+                <div className="rec-group-head">
                 <span className="rec-house">
                   <Home size={16} aria-hidden /> {house}
                   <span className="muted rec-count">
@@ -228,17 +249,23 @@ export function RecordList() {
                 </span>
                 <span className="rec-group-sum">
                   <span
-                    className={gOutstanding > 0 ? 'rec-out' : 'muted'}
+                    className={gNet > 0 ? 'rec-out' : 'muted'}
                     style={{ fontWeight: 800 }}
                   >
-                    {formatMoney(gOutstanding, currency)}
+                    {formatMoney(gNet, currency)}
                   </span>
                   <span className="muted rec-count">
-                    {t('groupTotal')} {formatMoney(gTotal, currency)}
+                    {t('total')} {formatMoney(gCharges, currency)}
                   </span>
                 </span>
               </div>
               <table className="rec-table rec-inner">
+                <colgroup>
+                  <col style={{ width: '40%' }} />
+                  <col style={{ width: '44px' }} />
+                  <col style={{ width: '84px' }} />
+                  <col style={{ width: '92px' }} />
+                </colgroup>
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.id} onClick={() => openEdit(r)}>
@@ -251,15 +278,24 @@ export function RecordList() {
                         </div>
                       </td>
                       <td className="num">{r.quantity}</td>
-                      <td className="num">
-                        {formatMoney(Number(r.amount), currency)}
+                      <td
+                        className="rec-amt"
+                        style={{ color: r.paid ? 'var(--success)' : undefined }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, width: '100%' }}>
+                          <p style={{ textAlign: 'left', width: '30%' }}>
+                            {r.paid ? '−' : ''}
+                            {formatMoney(Number(r.amount), currency)}
+                          </p>
+                        </div>
                       </td>
                       {actionCell(r)}
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
+              </div>
+            </SwipeToDelete>
           )
         })
       )}
