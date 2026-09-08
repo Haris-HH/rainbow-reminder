@@ -4,9 +4,12 @@ import { supabase } from '@/lib/supabase'
 import { useSettings } from '@/contexts/SettingsContext'
 import { Building2, CalendarDays, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { Layout } from '@/components/Layout'
+import { Loader } from '@/components/Loader'
 import { Modal } from '@/components/Modal'
 import { Reveal } from '@/components/Reveal'
 import { Fab } from '@/components/Fab'
+import { useRealtime } from '@/hooks/useRealtime'
+import { useDialog } from '@/contexts/DialogContext'
 import { formatMoney } from '@/lib/format'
 import { dayName } from '@/i18n/strings'
 import type { Deliverer, DeliveryRecord, Village } from '@/types/database'
@@ -17,6 +20,7 @@ const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0]
 export function DelivererDetail() {
   const { id } = useParams<{ id: string }>()
   const { t, lang, currency } = useSettings()
+  const { confirm, alert } = useDialog()
   const navigate = useNavigate()
 
   const [deliverer, setDeliverer] = useState<Deliverer | null>(null)
@@ -62,6 +66,11 @@ export function DelivererDetail() {
     load()
   }, [load])
 
+  useRealtime(
+    ['delivery_records', 'deliverer_villages', 'deliverer_days', 'deliverers'],
+    load
+  )
+
   async function openAssign() {
     if (deliverer?.mode === 'village') {
       const { data } = await supabase
@@ -84,7 +93,7 @@ export function DelivererDetail() {
   }
 
   async function removeVillage(villageId: string) {
-    if (!confirm(t('confirmDelete'))) return
+    if (!(await confirm(t('confirmDelete')))) return
     const { error } = await supabase
       .from('deliverer_villages')
       .delete()
@@ -104,7 +113,7 @@ export function DelivererDetail() {
   }
 
   async function removeDay(day: number) {
-    if (!confirm(t('confirmDelete'))) return
+    if (!(await confirm(t('confirmDelete')))) return
     const { error } = await supabase
       .from('deliverer_days')
       .delete()
@@ -115,16 +124,25 @@ export function DelivererDetail() {
   }
 
   // ledger: ค้างชำระ = +หนี้ , ชำระแล้ว = -เงินที่จ่ายแล้ว
+  // record ที่ผูก link เดียวกัน (บิลเดียวข้ามวัน) นับยอดครั้งเดียว
   function outstandingFor(pred: (r: DeliveryRecord) => boolean): number {
-    return records
-      .filter(pred)
-      .reduce((s, r) => s + (r.paid ? -Number(r.amount) : Number(r.amount)), 0)
+    const seen = new Set<string>()
+    let sum = 0
+    for (const r of records) {
+      if (!pred(r)) continue
+      if (r.link_id) {
+        if (seen.has(r.link_id)) continue
+        seen.add(r.link_id)
+      }
+      sum += r.paid ? -Number(r.amount) : Number(r.amount)
+    }
+    return sum
   }
 
   if (loading) {
     return (
       <Layout back title={t('loading')}>
-        <div className="center">{t('loading')}</div>
+        <Loader label={t('loading')} />
       </Layout>
     )
   }

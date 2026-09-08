@@ -9,13 +9,14 @@ import { Villages } from '@/pages/Villages'
 import { Deliverers } from '@/pages/Deliverers'
 import { Settings } from '@/pages/Settings'
 import { Users } from '@/pages/Users'
+import { LoadingScreen } from '@/components/LoadingScreen'
 
 export default function App() {
   const { session, loading } = useAuth()
   const { t } = useSettings()
 
   if (loading) {
-    return <div className="center">{t('loading')}</div>
+    return <LoadingScreen label={t('loading')} />
   }
 
   if (!session) {

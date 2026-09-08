@@ -3,10 +3,13 @@ import { supabase } from '@/lib/supabase'
 import { useSettings } from '@/contexts/SettingsContext'
 import { Building2, MapPin, Search } from 'lucide-react'
 import { Layout } from '@/components/Layout'
+import { Loader } from '@/components/Loader'
 import { Modal } from '@/components/Modal'
 import { MapPicker } from '@/components/MapPicker'
 import { Reveal } from '@/components/Reveal'
 import { Fab } from '@/components/Fab'
+import { useRealtime } from '@/hooks/useRealtime'
+import { useDialog } from '@/contexts/DialogContext'
 import { mapsUrl } from '@/lib/format'
 import type { Village } from '@/types/database'
 
@@ -22,6 +25,7 @@ const blank = (): FormState => ({ name: '', address: '', lat: '', lng: '' })
 
 export function Villages() {
   const { t } = useSettings()
+  const { confirm } = useDialog()
   const [villages, setVillages] = useState<Village[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
@@ -42,6 +46,8 @@ export function Villages() {
   useEffect(() => {
     load()
   }, [])
+
+  useRealtime(['villages'], load)
 
   function openAdd() {
     setForm(blank())
@@ -78,7 +84,7 @@ export function Villages() {
 
   async function remove() {
     if (!form.id) return
-    if (!confirm(t('confirmDelete'))) return
+    if (!(await confirm(t('confirmDelete')))) return
     await supabase
       .from('villages')
       .update({ deleted_at: new Date().toISOString() })
@@ -103,7 +109,7 @@ export function Villages() {
       </div>
 
       {loading ? (
-        <div className="center">{t('loading')}</div>
+        <Loader label={t('loading')} />
       ) : filtered.length === 0 ? (
         <div className="center">{t('empty')}</div>
       ) : (

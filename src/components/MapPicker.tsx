@@ -3,6 +3,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { Search, LocateFixed } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
+import { useDialog } from '@/contexts/DialogContext'
 
 interface Props {
   lat: number | null
@@ -37,6 +38,7 @@ export function MapPicker({ lat, lng, onChange }: Props) {
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
   const { t, lang } = useSettings()
+  const { alert } = useDialog()
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
@@ -129,7 +131,7 @@ export function MapPicker({ lat, lng, onChange }: Props) {
         place(la, ln, true)
         onChangeRef.current(la, ln)
       },
-      () => alert('ไม่สามารถเข้าถึงตำแหน่งได้')
+      () => void alert('ไม่สามารถเข้าถึงตำแหน่งได้')
     )
   }
 

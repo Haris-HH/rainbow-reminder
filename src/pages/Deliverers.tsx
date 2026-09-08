@@ -3,9 +3,12 @@ import { supabase } from '@/lib/supabase'
 import { useSettings } from '@/contexts/SettingsContext'
 import { ChevronRight } from 'lucide-react'
 import { Layout } from '@/components/Layout'
+import { Loader } from '@/components/Loader'
 import { Modal } from '@/components/Modal'
 import { Reveal } from '@/components/Reveal'
 import { Fab } from '@/components/Fab'
+import { useRealtime } from '@/hooks/useRealtime'
+import { useDialog } from '@/contexts/DialogContext'
 import type { Deliverer, DelivererMode } from '@/types/database'
 
 interface FormState {
@@ -18,6 +21,7 @@ const blank = (): FormState => ({ name: '', mode: 'village' })
 
 export function Deliverers() {
   const { t } = useSettings()
+  const { confirm } = useDialog()
   const [deliverers, setDeliverers] = useState<Deliverer[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
@@ -37,6 +41,8 @@ export function Deliverers() {
   useEffect(() => {
     load()
   }, [])
+
+  useRealtime(['deliverers'], load)
 
   function openAdd() {
     setForm(blank())
@@ -62,7 +68,7 @@ export function Deliverers() {
 
   async function remove() {
     if (!form.id) return
-    if (!confirm(t('confirmDelete'))) return
+    if (!(await confirm(t('confirmDelete')))) return
     await supabase
       .from('deliverers')
       .update({ deleted_at: new Date().toISOString() })
@@ -74,7 +80,7 @@ export function Deliverers() {
   return (
     <Layout title={t('deliverers')}>
       {loading ? (
-        <div className="center">{t('loading')}</div>
+        <Loader label={t('loading')} />
       ) : deliverers.length === 0 ? (
         <div className="center">{t('empty')}</div>
       ) : (

@@ -84,9 +84,14 @@ create table if not exists public.delivery_records (
   paid boolean not null default false,      -- ชำระแล้วหรือยัง
   note text default '',
   delivered_at date not null default current_date,
+  link_id uuid,                             -- ผูก record ที่เป็นบิลเดียวกันข้ามวัน (sync กัน, นับยอดครั้งเดียว)
   created_at timestamptz not null default now(),
   deleted_at timestamptz                    -- soft delete: "ลบเวลาลูกค้าหนีแล้ว"
 );
+
+-- เผื่อกรณีเคยรัน schema เวอร์ชันก่อน (idempotent)
+alter table public.delivery_records add column if not exists link_id uuid;
+create index if not exists idx_delivery_link on public.delivery_records(link_id) where link_id is not null;
 
 create index if not exists idx_delivery_deliverer on public.delivery_records(deliverer_id) where deleted_at is null;
 create index if not exists idx_delivery_village on public.delivery_records(village_id) where deleted_at is null;
@@ -176,3 +181,24 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- ============================================================
+-- Realtime: เปิดให้ตารางส่ง change ผ่าน websocket
+-- (เพื่อให้ผู้ใช้หลายคนเห็น update อัตโนมัติแบบ real-time)
+-- idempotent: เพิ่มเฉพาะตารางที่ยังไม่อยู่ใน publication
+-- ============================================================
+do $$
+declare t text;
+begin
+  foreach t in array array['villages','deliverers','deliverer_villages','deliverer_days','delivery_records','profiles']
+  loop
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime'
+        and schemaname = 'public'
+        and tablename = t
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
+end $$;

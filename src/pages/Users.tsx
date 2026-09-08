@@ -5,9 +5,12 @@ import { useSettings } from '@/contexts/SettingsContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { ChevronRight } from 'lucide-react'
 import { Layout } from '@/components/Layout'
+import { Loader } from '@/components/Loader'
 import { Modal } from '@/components/Modal'
 import { Reveal } from '@/components/Reveal'
 import { Fab } from '@/components/Fab'
+import { useRealtime } from '@/hooks/useRealtime'
+import { useDialog } from '@/contexts/DialogContext'
 import type { AppRole, Profile } from '@/types/database'
 
 interface FormState {
@@ -37,6 +40,7 @@ async function callAdmin(body: Record<string, unknown>) {
 
 export function Users() {
   const { t } = useSettings()
+  const { confirm } = useDialog()
   const { isAdmin, profile } = useAuth()
   const [users, setUsers] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
@@ -57,6 +61,8 @@ export function Users() {
   useEffect(() => {
     if (isAdmin) load()
   }, [isAdmin])
+
+  useRealtime(['profiles'], load)
 
   if (!isAdmin) return <Navigate to="/" replace />
 
@@ -109,7 +115,7 @@ export function Users() {
 
   async function remove() {
     if (!form.id) return
-    if (!confirm(t('confirmDelete'))) return
+    if (!(await confirm(t('confirmDelete')))) return
     setSaving(true)
     setError('')
     try {
@@ -126,7 +132,7 @@ export function Users() {
   return (
     <Layout back title={t('users')}>
       {loading ? (
-        <div className="center">{t('loading')}</div>
+        <Loader label={t('loading')} />
       ) : (
         <Reveal className="list-grid" deps={[users.length]}>
           {users.map((u) => (

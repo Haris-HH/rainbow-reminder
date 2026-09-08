@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useSettings } from '@/contexts/SettingsContext'
 import { ChevronRight } from 'lucide-react'
 import { Layout } from '@/components/Layout'
+import { Loader } from '@/components/Loader'
 import { Reveal } from '@/components/Reveal'
+import { useRealtime } from '@/hooks/useRealtime'
 import type { Deliverer } from '@/types/database'
 
 export function Dashboard() {
@@ -13,17 +15,21 @@ export function Dashboard() {
   const [deliverers, setDeliverers] = useState<Deliverer[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    supabase
+  const load = useCallback(async () => {
+    const { data } = await supabase
       .from('deliverers')
       .select('*')
       .is('deleted_at', null)
       .order('name')
-      .then(({ data }) => {
-        setDeliverers((data as Deliverer[]) ?? [])
-        setLoading(false)
-      })
+    setDeliverers((data as Deliverer[]) ?? [])
+    setLoading(false)
   }, [])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  useRealtime(['deliverers'], load)
 
   return (
     <Layout>
@@ -32,7 +38,7 @@ export function Dashboard() {
       </div>
 
       {loading ? (
-        <div className="center">{t('loading')}</div>
+        <Loader label={t('loading')} />
       ) : deliverers.length === 0 ? (
         <div className="center">{t('empty')}</div>
       ) : (

@@ -2,23 +2,28 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useSettings } from '@/contexts/SettingsContext'
-import { Check, RotateCcw, Trash2, Search, Home } from 'lucide-react'
+import { Check, RotateCcw, Trash2, Search, Home, LayoutList, Table2 } from 'lucide-react'
 import { Layout } from '@/components/Layout'
+import { Loader } from '@/components/Loader'
 import { Modal } from '@/components/Modal'
 import { Fab } from '@/components/Fab'
 import { SwipeToDelete } from '@/components/SwipeToDelete'
+import { useRealtime } from '@/hooks/useRealtime'
+import { useDialog } from '@/contexts/DialogContext'
 import { formatMoney } from '@/lib/format'
 import { dayName } from '@/i18n/strings'
 import type { DeliveryRecord, Village } from '@/types/database'
 
 interface FormState {
   id?: string
+  link_id?: string | null
   house_no: string
   quantity: string
   amount: string
   note: string
   delivered_at: string
   paid: boolean
+  normalDay: boolean // สวิตช์: ส่งตามวันปกติของบ้านนี้ไหม (เฉพาะแบบวัน)
 }
 
 const blank = (): FormState => ({
@@ -28,6 +33,7 @@ const blank = (): FormState => ({
   note: '',
   delivered_at: new Date().toISOString().slice(0, 10),
   paid: false,
+  normalDay: true,
 })
 
 export function RecordList() {
@@ -38,6 +44,7 @@ export function RecordList() {
   const day = dayParam !== null ? Number(dayParam) : null
 
   const { t, lang, currency } = useSettings()
+  const { confirm, alert } = useDialog()
   const [records, setRecords] = useState<DeliveryRecord[]>([])
   const [village, setVillage] = useState<Village | null>(null)
   const [loading, setLoading] = useState(true)
@@ -45,6 +52,7 @@ export function RecordList() {
   const [form, setForm] = useState<FormState>(blank())
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
+  const [view, setView] = useState<'list' | 'table'>('list')
 
   const load = useCallback(async () => {
     if (!id) return
@@ -73,6 +81,8 @@ export function RecordList() {
     load()
   }, [load])
 
+  useRealtime(['delivery_records'], load)
+
   function openAdd() {
     setForm(blank())
     setModalOpen(true)
@@ -81,23 +91,49 @@ export function RecordList() {
   function openEdit(r: DeliveryRecord) {
     setForm({
       id: r.id,
+      link_id: r.link_id,
       house_no: r.house_no,
       quantity: String(r.quantity),
       amount: String(r.amount),
       note: r.note ?? '',
       delivered_at: r.delivered_at,
       paid: r.paid,
+      normalDay: true,
     })
     setModalOpen(true)
+  }
+
+  // หา "วันปกติ" ของบ้าน = วันที่บ้านนี้เคยมี record มากที่สุด (ยกเว้นวันปัจจุบัน)
+  async function findNormalDay(houseNo: string): Promise<number | null> {
+    const { data } = await supabase
+      .from('delivery_records')
+      .select('day_of_week')
+      .eq('deliverer_id', id)
+      .eq('house_no', houseNo)
+      .is('deleted_at', null)
+      .not('day_of_week', 'is', null)
+    const counts = new Map<number, number>()
+    for (const row of (data ?? []) as { day_of_week: number }[]) {
+      if (row.day_of_week === day) continue
+      counts.set(row.day_of_week, (counts.get(row.day_of_week) ?? 0) + 1)
+    }
+    let best: number | null = null
+    let max = 0
+    for (const [d, c] of counts) {
+      if (c > max) {
+        max = c
+        best = d
+      }
+    }
+    return best
   }
 
   async function save() {
     if (!id) return
     setSaving(true)
-    const payload = {
+    const shared = {
       deliverer_id: id,
       village_id: villageId,
-      day_of_week: day,
       house_no: form.house_no,
       quantity: Number(form.quantity) || 0,
       amount: Number(form.amount) || 0,
@@ -106,41 +142,83 @@ export function RecordList() {
       delivered_at: form.delivered_at,
       paid: form.paid,
     }
+
     if (form.id) {
-      await supabase.from('delivery_records').update(payload).eq('id', form.id)
+      // แก้ไข: ถ้าผูกกันอยู่ อัปเดตทุก record ที่ link เดียวกัน (คงวันของแต่ละอันไว้)
+      if (form.link_id) {
+        await supabase
+          .from('delivery_records')
+          .update(shared)
+          .eq('link_id', form.link_id)
+      } else {
+        await supabase
+          .from('delivery_records')
+          .update({ ...shared, day_of_week: day })
+          .eq('id', form.id)
+      }
+    } else if (day !== null && !form.normalDay) {
+      // ส่งนอกวันปกติ: เพิ่มวันนี้ + วันปกติของบ้าน (ผูก link เดียวกัน)
+      const normal = await findNormalDay(form.house_no)
+      if (normal === null) {
+        await alert(t('noNormalDay'))
+        await supabase
+          .from('delivery_records')
+          .insert({ ...shared, day_of_week: day })
+      } else {
+        const link_id = crypto.randomUUID()
+        await supabase.from('delivery_records').insert([
+          { ...shared, day_of_week: day, link_id },
+          { ...shared, day_of_week: normal, link_id },
+        ])
+      }
     } else {
-      await supabase.from('delivery_records').insert(payload)
+      // ปกติ
+      await supabase
+        .from('delivery_records')
+        .insert({ ...shared, day_of_week: day })
     }
+
     setSaving(false)
     setModalOpen(false)
     load()
   }
 
   async function togglePaid(r: DeliveryRecord) {
-    await supabase
-      .from('delivery_records')
-      .update({ paid: !r.paid })
-      .eq('id', r.id)
+    const qy = supabase.from('delivery_records').update({ paid: !r.paid })
+    // sync ทั้งคู่ถ้าผูกกัน
+    if (r.link_id) await qy.eq('link_id', r.link_id)
+    else await qy.eq('id', r.id)
     load()
   }
 
   async function softDelete(r: DeliveryRecord) {
-    if (!confirm(t('confirmDelete'))) return
-    await supabase
+    if (!(await confirm(t('confirmDelete')))) return
+    const qy = supabase
       .from('delivery_records')
       .update({ deleted_at: new Date().toISOString() })
-      .eq('id', r.id)
+    if (r.link_id) await qy.eq('link_id', r.link_id)
+    else await qy.eq('id', r.id)
     load()
   }
 
-  // ลบทุกรายการของบ้านนี้ (soft delete)
+  // ลบทุกรายการของบ้านนี้ (soft delete) + record ที่ผูกไว้ในวันอื่นด้วย
   async function deleteHouse(rows: DeliveryRecord[]) {
-    if (!confirm(t('confirmDeleteHouse'))) return
+    if (!(await confirm(t('confirmDeleteHouse')))) return
+    const del = new Date().toISOString()
     const ids = rows.map((r) => r.id)
+    const linkIds = [
+      ...new Set(rows.map((r) => r.link_id).filter(Boolean) as string[]),
+    ]
     await supabase
       .from('delivery_records')
-      .update({ deleted_at: new Date().toISOString() })
+      .update({ deleted_at: del })
       .in('id', ids)
+    if (linkIds.length) {
+      await supabase
+        .from('delivery_records')
+        .update({ deleted_at: del })
+        .in('link_id', linkIds)
+    }
     load()
   }
 
@@ -183,6 +261,29 @@ export function RecordList() {
 
   const outstanding = netBalance(filtered)
 
+  // แบบตาราง: แยกเป็น 2 ตาราง (ค้างชำระ / ชำระแล้ว) เรียงตามบ้านเลขที่แล้ววันที่
+  const byHouseThenDate = (a: DeliveryRecord, b: DeliveryRecord) => {
+    const h = (a.house_no || '').localeCompare(b.house_no || '', undefined, {
+      numeric: true,
+    })
+    return h !== 0 ? h : b.delivered_at.localeCompare(a.delivered_at)
+  }
+  const unpaidRows = filtered.filter((r) => !r.paid).sort(byHouseThenDate)
+  const paidRows = filtered.filter((r) => r.paid).sort(byHouseThenDate)
+  const sumAmount = (rows: DeliveryRecord[]) =>
+    rows.reduce((s, r) => s + Number(r.amount), 0)
+
+  // จัดกลุ่มแถวตามบ้านเลขที่ (คงลำดับที่ sort มาแล้ว)
+  const groupByHouse = (rows: DeliveryRecord[]): [string, DeliveryRecord[]][] => {
+    const m = new Map<string, DeliveryRecord[]>()
+    for (const r of rows) {
+      const k = r.house_no || '-'
+      if (!m.has(k)) m.set(k, [])
+      m.get(k)!.push(r)
+    }
+    return [...m.entries()]
+  }
+
   const actionCell = (r: DeliveryRecord) => (
     <td className="rec-act-cell" onClick={(e) => e.stopPropagation()}>
       <div className="rec-act">
@@ -204,6 +305,68 @@ export function RecordList() {
     </td>
   )
 
+  // แบบตาราง: หนึ่ง section (ค้างชำระ/ชำระแล้ว) = accordion จัดกลุ่มตามบ้าน
+  const renderSection = (
+    rows: DeliveryRecord[],
+    keyPrefix: string,
+    heading: string,
+    positive: boolean
+  ) => {
+    const color = positive ? 'var(--success)' : 'var(--crimson)'
+    return (
+      <div className="rec-table-block">
+        <div className="rec-table-head">
+          <span className="rec-table-title">{heading}</span>
+          <span className="rec-table-total" style={{ color }}>
+            {formatMoney(sumAmount(rows), currency)}
+          </span>
+        </div>
+        {rows.length === 0 ? (
+          <div className="acc-empty">{t('empty')}</div>
+        ) : (
+          <div className="acc">
+            {groupByHouse(rows).map(([house, gr]) => (
+              <div className="acc-group open" key={`${keyPrefix}:${house}`}>
+                <div className="acc-head">
+                  <span className="acc-name">
+                    <Home size={15} aria-hidden /> {house}
+                  </span>
+                  <span className="acc-count">{gr.length}</span>
+                  <span className="acc-sum" style={{ color }}>
+                    {formatMoney(sumAmount(gr), currency)}
+                  </span>
+                </div>
+                <table className="rec-table rec-inner acc-body">
+                  <colgroup>
+                    <col />
+                    <col style={{ width: '44px' }} />
+                    <col style={{ width: '84px' }} />
+                    <col style={{ width: '92px' }} />
+                  </colgroup>
+                  <tbody>
+                    {gr.map((r) => (
+                      <tr key={r.id} onClick={() => openEdit(r)}>
+                        <td>{r.delivered_at}</td>
+                        <td className="num">{r.quantity}</td>
+                        <td
+                          className="rec-amt"
+                          style={{ color: positive ? 'var(--success)' : undefined }}
+                        >
+                          {formatMoney(Number(r.amount), currency)}
+                        </td>
+                        {actionCell(r)}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <Layout back title={title}>
       <div className="summary">
@@ -212,23 +375,50 @@ export function RecordList() {
       </div>
 
       {!loading && records.length > 0 && (
-        <div className="search-bar">
-          <Search size={18} className="muted" aria-hidden />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t('searchRecord')}
-            inputMode="text"
-          />
-        </div>
+        <>
+          <div className="search-bar">
+            <Search size={18} className="muted" aria-hidden />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t('searchRecord')}
+              inputMode="text"
+            />
+          </div>
+          <div className="view-toggle" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={view === 'list'}
+              className={view === 'list' ? 'on' : ''}
+              onClick={() => setView('list')}
+            >
+              <LayoutList size={16} aria-hidden /> {t('viewList')}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={view === 'table'}
+              className={view === 'table' ? 'on' : ''}
+              onClick={() => setView('table')}
+            >
+              <Table2 size={16} aria-hidden /> {t('viewTable')}
+            </button>
+          </div>
+        </>
       )}
 
       {loading ? (
-        <div className="center">{t('loading')}</div>
+        <Loader label={t('loading')} />
       ) : records.length === 0 ? (
         <div className="center">{t('empty')}</div>
       ) : groups.length === 0 ? (
         <div className="center">{t('empty')}</div>
+      ) : view === 'table' ? (
+        <>
+          {renderSection(unpaidRows, 'u', t('unpaid'), false)}
+          {renderSection(paidRows, 'p', t('paid'), true)}
+        </>
       ) : (
         groups.map(([house, rows]) => {
           const gNet = netBalance(rows)
@@ -375,6 +565,31 @@ export function RecordList() {
               {t('paid')}
             </button>
           </div>
+
+          {day !== null && !form.id && (
+            <div className="field" style={{ marginTop: 15 }}>
+              <div className="switch-row">
+                <label style={{ margin: 0 }}>{t('normalDay')}</label>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={form.normalDay}
+                  className={`switch${form.normalDay ? ' on' : ''}`}
+                  onClick={() =>
+                    setForm({ ...form, normalDay: !form.normalDay })
+                  }
+                >
+                  <span className="knob" />
+                </button>
+              </div>
+              {!form.normalDay && (
+                <p className="muted" style={{ fontSize: '0.78rem', marginTop: 6 }}>
+                  {t('normalDayHint')}
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="modal-actions">
             <button
               className="btn btn-ghost"

@@ -51,6 +51,7 @@ export interface DeliveryRecord {
   paid: boolean
   note: string | null
   delivered_at: string
+  link_id: string | null
   created_at: string
   deleted_at: string | null
 }
