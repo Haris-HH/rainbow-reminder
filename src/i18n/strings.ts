@@ -87,6 +87,16 @@ export const dict = {
   viewList: { th: 'แบบรายการ', my: 'စာရင်းပုံစံ' },
   viewTable: { th: 'แบบตาราง', my: 'ဇယားပုံစံ' },
   printPdf: { th: 'พิมพ์ PDF', my: 'PDF ပုံနှိပ်ရန်' },
+  printPdfHint: {
+    th: 'เลือกเดือนและปีที่ต้องการพิมพ์',
+    my: 'ပုံနှိပ်လိုသော လနှင့်နှစ်ကို ရွေးပါ',
+  },
+  month: { th: 'เดือน', my: 'လ' },
+  year: { th: 'ปี', my: 'နှစ်' },
+  noDataForMonth: {
+    th: 'ไม่มีข้อมูลในเดือนที่เลือก',
+    my: 'ရွေးထားသောလတွင် ဒေတာမရှိပါ',
+  },
 
   // days
   day0: { th: 'อาทิตย์', my: 'တနင်္ဂနွေ' },
@@ -96,6 +106,20 @@ export const dict = {
   day4: { th: 'พฤหัสบดี', my: 'ကြာသပတေး' },
   day5: { th: 'ศุกร์', my: 'သောကြာ' },
   day6: { th: 'เสาร์', my: 'စနေ' },
+
+  // months
+  month1: { th: 'มกราคม', my: 'ဇန်နဝါရီ' },
+  month2: { th: 'กุมภาพันธ์', my: 'ဖေဖော်ဝါရီ' },
+  month3: { th: 'มีนาคม', my: 'မတ်' },
+  month4: { th: 'เมษายน', my: 'ဧပြီ' },
+  month5: { th: 'พฤษภาคม', my: 'မေ' },
+  month6: { th: 'มิถุนายน', my: 'ဇွန်' },
+  month7: { th: 'กรกฎาคม', my: 'ဇူလိုင်' },
+  month8: { th: 'สิงหาคม', my: 'သြဂုတ်' },
+  month9: { th: 'กันยายน', my: 'စက်တင်ဘာ' },
+  month10: { th: 'ตุลาคม', my: 'အောက်တိုဘာ' },
+  month11: { th: 'พฤศจิกายน', my: 'နိုဝင်ဘာ' },
+  month12: { th: 'ธันวาคม', my: 'ဒီဇင်ဘာ' },
 
   // settings
   theme: { th: 'ธีม', my: 'အသွင်အပြင်' },
@@ -132,4 +156,9 @@ export function t(key: StringKey, lang: Lang): string {
 export function dayName(day: number, lang: Lang): string {
   const key = `day${day}` as StringKey
   return dict[key]?.[lang] ?? String(day)
+}
+
+export function monthName(month: number, lang: Lang): string {
+  const key = `month${month}` as StringKey
+  return dict[key]?.[lang] ?? String(month)
 }

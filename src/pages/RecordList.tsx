@@ -11,7 +11,7 @@ import { SwipeToDelete } from '@/components/SwipeToDelete'
 import { useRealtime } from '@/hooks/useRealtime'
 import { useDialog } from '@/contexts/DialogContext'
 import { formatMoney } from '@/lib/format'
-import { dayName } from '@/i18n/strings'
+import { dayName, monthName } from '@/i18n/strings'
 import type { DeliveryRecord, Village } from '@/types/database'
 
 interface FormState {
@@ -61,6 +61,9 @@ export function RecordList() {
   const [search, setSearch] = useState('')
   const [view, setView] = useState<'list' | 'table'>('list')
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  const [printModalOpen, setPrintModalOpen] = useState(false)
+  const [printMonth, setPrintMonth] = useState(() => new Date().getMonth() + 1)
+  const [printYear, setPrintYear] = useState(() => new Date().getFullYear())
 
   function toggleGroup(house: string) {
     setCollapsedGroups((prev) => {
@@ -293,24 +296,42 @@ export function RecordList() {
   const sumAmount = (rows: DeliveryRecord[]) =>
     rows.reduce((s, r) => s + Number(r.amount), 0)
 
-  // ปุ่ม print pdf กดไม่ได้ถ้าไม่มีข้อมูลในมุมมองปัจจุบัน
-  const printDisabled = view === 'table' ? todayRows.length === 0 : groups.length === 0
+  // ปุ่ม print pdf กดไม่ได้ถ้าไม่มีข้อมูลเลย (เลือกเดือน/ปีในโมดัลทีหลัง)
+  const printDisabled = records.length === 0
+
+  // ปีที่มีข้อมูลจริง (เรียงล่าสุดก่อน) ใช้เป็นตัวเลือกในโมดัล
+  const printYearOptions = (() => {
+    const years = new Set(records.map((r) => Number(r.delivered_at.slice(0, 4))))
+    years.add(new Date().getFullYear())
+    return [...years].sort((a, b) => b - a)
+  })()
+
+  // records ของเดือน/ปีที่เลือกในโมดัล print (ไม่ยึดกับ "วันนี้" เหมือนมุมมองตาราง)
+  const printMonthKey = `${printYear}-${String(printMonth).padStart(2, '0')}`
+  const printMonthRows = filtered.filter((r) => r.delivered_at.startsWith(printMonthKey))
+
+  function openPrintModal() {
+    if (printDisabled) return
+    setPrintModalOpen(true)
+  }
 
   // pdfmake โหลดแบบ dynamic import เพื่อไม่ให้ bundle หลักบวมสำหรับหน้าที่ไม่ได้ print
   // เปิดหน้าต่างใหม่แบบ sync ในตัว handler ก่อน (ยังอยู่ใน user-gesture) กัน popup blocker
   function handlePrint() {
-    if (printDisabled) return
+    if (printMonthRows.length === 0) return
     const win = window.open('', '_blank')
+    const printTitle = `${title ?? ''} — ${monthName(printMonth, lang)} ${printYear}`
     void import('@/lib/pdf').then(({ printRecordsPdf }) => {
       printRecordsPdf({
-        title: title ?? '',
+        title: printTitle,
         lang,
         currency,
         view,
-        rows: view === 'table' ? todayRows : filtered,
+        rows: printMonthRows,
         win,
       })
     })
+    setPrintModalOpen(false)
   }
 
   // จัดกลุ่มแถวตามบ้านเลขที่ (คงลำดับที่ sort มาแล้ว)
@@ -566,7 +587,7 @@ export function RecordList() {
             key: 'print',
             icon: <Printer size={20} aria-hidden />,
             label: t('printPdf'),
-            onClick: handlePrint,
+            onClick: openPrintModal,
             disabled: printDisabled,
           },
         ]}
@@ -685,6 +706,64 @@ export function RecordList() {
               {t('save')}
             </button>
           </div>
+      </Modal>
+
+      <Modal
+        open={printModalOpen}
+        title={t('printPdf')}
+        onClose={() => setPrintModalOpen(false)}
+      >
+        <p className="muted" style={{ marginTop: 0 }}>{t('printPdfHint')}</p>
+        <div className="row">
+          <div className="field">
+            <label>{t('month')}</label>
+            <select
+              className="select"
+              value={printMonth}
+              onChange={(e) => setPrintMonth(Number(e.target.value))}
+            >
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                <option key={m} value={m}>
+                  {monthName(m, lang)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label>{t('year')}</label>
+            <select
+              className="select"
+              value={printYear}
+              onChange={(e) => setPrintYear(Number(e.target.value))}
+            >
+              {printYearOptions.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {printMonthRows.length === 0 && (
+          <p className="muted" style={{ fontSize: '0.85rem' }}>{t('noDataForMonth')}</p>
+        )}
+
+        <div className="modal-actions">
+          <button
+            className="btn btn-ghost"
+            onClick={() => setPrintModalOpen(false)}
+          >
+            {t('cancel')}
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={handlePrint}
+            disabled={printMonthRows.length === 0}
+          >
+            {t('printPdf')}
+          </button>
+        </div>
       </Modal>
     </Layout>
   )
