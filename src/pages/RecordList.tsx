@@ -2,11 +2,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useSettings } from '@/contexts/SettingsContext'
-import { Check, RotateCcw, Trash2, Search, Home, LayoutList, Table2 } from 'lucide-react'
+import { Check, RotateCcw, Trash2, Search, Home, LayoutList, Table2, Plus, Printer, ChevronDown } from 'lucide-react'
 import { Layout } from '@/components/Layout'
 import { Loader } from '@/components/Loader'
 import { Modal } from '@/components/Modal'
-import { Fab } from '@/components/Fab'
+import { SpeedDial } from '@/components/SpeedDial'
 import { SwipeToDelete } from '@/components/SwipeToDelete'
 import { useRealtime } from '@/hooks/useRealtime'
 import { useDialog } from '@/contexts/DialogContext'
@@ -26,12 +26,19 @@ interface FormState {
   normalDay: boolean // สวิตช์: ส่งตามวันปกติของบ้านนี้ไหม (เฉพาะแบบวัน)
 }
 
+// วันที่ "วันนี้" ตามเวลาท้องถิ่น (YYYY-MM-DD) — ตัดที่เที่ยงคืนตามเครื่องผู้ใช้
+const localToday = (): string => {
+  const d = new Date()
+  const off = d.getTimezoneOffset() * 60000
+  return new Date(d.getTime() - off).toISOString().slice(0, 10)
+}
+
 const blank = (): FormState => ({
   house_no: '',
   quantity: '1',
   amount: '',
   note: '',
-  delivered_at: new Date().toISOString().slice(0, 10),
+  delivered_at: localToday(),
   paid: false,
   normalDay: true,
 })
@@ -53,6 +60,16 @@ export function RecordList() {
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
   const [view, setView] = useState<'list' | 'table'>('list')
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+
+  function toggleGroup(house: string) {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(house)) next.delete(house)
+      else next.add(house)
+      return next
+    })
+  }
 
   const load = useCallback(async () => {
     if (!id) return
@@ -261,17 +278,40 @@ export function RecordList() {
 
   const outstanding = netBalance(filtered)
 
-  // แบบตาราง: แยกเป็น 2 ตาราง (ค้างชำระ / ชำระแล้ว) เรียงตามบ้านเลขที่แล้ววันที่
+  // แบบตาราง: แสดงเฉพาะรายการของ "วันนี้" (เลยเที่ยงคืน = ขึ้นวันใหม่ ตารางว่าง)
+  // แยกเป็น 2 ตาราง (ค้างชำระ / ชำระแล้ว) เรียงตามบ้านเลขที่แล้ววันที่
+  const today = localToday()
   const byHouseThenDate = (a: DeliveryRecord, b: DeliveryRecord) => {
     const h = (a.house_no || '').localeCompare(b.house_no || '', undefined, {
       numeric: true,
     })
     return h !== 0 ? h : b.delivered_at.localeCompare(a.delivered_at)
   }
-  const unpaidRows = filtered.filter((r) => !r.paid).sort(byHouseThenDate)
-  const paidRows = filtered.filter((r) => r.paid).sort(byHouseThenDate)
+  const todayRows = filtered.filter((r) => r.delivered_at === today)
+  const unpaidRows = todayRows.filter((r) => !r.paid).sort(byHouseThenDate)
+  const paidRows = todayRows.filter((r) => r.paid).sort(byHouseThenDate)
   const sumAmount = (rows: DeliveryRecord[]) =>
     rows.reduce((s, r) => s + Number(r.amount), 0)
+
+  // ปุ่ม print pdf กดไม่ได้ถ้าไม่มีข้อมูลในมุมมองปัจจุบัน
+  const printDisabled = view === 'table' ? todayRows.length === 0 : groups.length === 0
+
+  // pdfmake โหลดแบบ dynamic import เพื่อไม่ให้ bundle หลักบวมสำหรับหน้าที่ไม่ได้ print
+  // เปิดหน้าต่างใหม่แบบ sync ในตัว handler ก่อน (ยังอยู่ใน user-gesture) กัน popup blocker
+  function handlePrint() {
+    if (printDisabled) return
+    const win = window.open('', '_blank')
+    void import('@/lib/pdf').then(({ printRecordsPdf }) => {
+      printRecordsPdf({
+        title: title ?? '',
+        lang,
+        currency,
+        view,
+        rows: view === 'table' ? todayRows : filtered,
+        win,
+      })
+    })
+  }
 
   // จัดกลุ่มแถวตามบ้านเลขที่ (คงลำดับที่ sort มาแล้ว)
   const groupByHouse = (rows: DeliveryRecord[]): [string, DeliveryRecord[]][] => {
@@ -423,6 +463,7 @@ export function RecordList() {
         groups.map(([house, rows]) => {
           const gNet = netBalance(rows)
           const gCharges = sumCharges(rows)
+          const isCollapsed = collapsedGroups.has(house)
           return (
             <SwipeToDelete
               key={house}
@@ -430,8 +471,28 @@ export function RecordList() {
               onDelete={() => deleteHouse(rows)}
             >
               <div className="card rec-group">
-                <div className="rec-group-head">
+                <div
+                  className="rec-group-head"
+                  onClick={() => toggleGroup(house)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      toggleGroup(house)
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={!isCollapsed}
+                >
                 <span className="rec-house">
+                  <ChevronDown
+                    size={16}
+                    aria-hidden
+                    className="rec-collapse-chevron"
+                    style={{
+                      transform: isCollapsed ? 'rotate(-90deg)' : undefined,
+                    }}
+                  />
                   <Home size={16} aria-hidden /> {house}
                   <span className="muted rec-count">
                     {rows.length} {t('records')}
@@ -449,48 +510,67 @@ export function RecordList() {
                   </span>
                 </span>
               </div>
-              <table className="rec-table rec-inner">
-                <colgroup>
-                  <col style={{ width: '40%' }} />
-                  <col style={{ width: '44px' }} />
-                  <col style={{ width: '84px' }} />
-                  <col style={{ width: '92px' }} />
-                </colgroup>
-                <tbody>
-                  {rows.map((r) => (
-                    <tr key={r.id} onClick={() => openEdit(r)}>
-                      <td>
-                        {r.delivered_at}
-                        <div>
-                          <span className={`badge ${r.paid ? 'paid' : 'unpaid'}`}>
-                            {r.paid ? t('paid') : t('unpaid')}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="num">{r.quantity}</td>
-                      <td
-                        className="rec-amt"
-                        style={{ color: r.paid ? 'var(--success)' : undefined }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, width: '100%' }}>
-                          <p style={{ textAlign: 'left', width: '30%' }}>
-                            {r.paid ? '−' : ''}
-                            {formatMoney(Number(r.amount), currency)}
-                          </p>
-                        </div>
-                      </td>
-                      {actionCell(r)}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              {!isCollapsed && (
+                <table className="rec-table rec-inner">
+                  <colgroup>
+                    <col style={{ width: '40%' }} />
+                    <col style={{ width: '44px' }} />
+                    <col style={{ width: '84px' }} />
+                    <col style={{ width: '92px' }} />
+                  </colgroup>
+                  <tbody>
+                    {rows.map((r) => (
+                      <tr key={r.id} onClick={() => openEdit(r)}>
+                        <td>
+                          {r.delivered_at}
+                          <div>
+                            <span className={`badge ${r.paid ? 'paid' : 'unpaid'}`}>
+                              {r.paid ? t('paid') : t('unpaid')}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="num">{r.quantity}</td>
+                        <td
+                          className="rec-amt"
+                          style={{ color: r.paid ? 'var(--success)' : undefined }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, width: '100%' }}>
+                            <p style={{ textAlign: 'left', width: '30%' }}>
+                              {r.paid ? '−' : ''}
+                              {formatMoney(Number(r.amount), currency)}
+                            </p>
+                          </div>
+                        </td>
+                        {actionCell(r)}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
               </div>
             </SwipeToDelete>
           )
         })
       )}
 
-      <Fab onClick={openAdd} />
+      <SpeedDial
+        mainLabel={t('addRecord')}
+        actions={[
+          {
+            key: 'add',
+            icon: <Plus size={20} aria-hidden />,
+            label: t('add'),
+            onClick: openAdd,
+          },
+          {
+            key: 'print',
+            icon: <Printer size={20} aria-hidden />,
+            label: t('printPdf'),
+            onClick: handlePrint,
+            disabled: printDisabled,
+          },
+        ]}
+      />
 
       <Modal
         open={modalOpen}

@@ -10,6 +10,7 @@ import { Deliverers } from '@/pages/Deliverers'
 import { Settings } from '@/pages/Settings'
 import { Users } from '@/pages/Users'
 import { LoadingScreen } from '@/components/LoadingScreen'
+import { UpdateToast } from '@/components/UpdateToast'
 
 export default function App() {
   const { session, loading } = useAuth()
@@ -21,22 +22,28 @@ export default function App() {
 
   if (!session) {
     return (
-      <Routes>
-        <Route path="*" element={<Login />} />
-      </Routes>
+      <>
+        <Routes>
+          <Route path="*" element={<Login />} />
+        </Routes>
+        <UpdateToast />
+      </>
     )
   }
 
   return (
-    <Routes>
-      <Route path="/" element={<Dashboard />} />
-      <Route path="/deliverer/:id" element={<DelivererDetail />} />
-      <Route path="/deliverer/:id/records" element={<RecordList />} />
-      <Route path="/villages" element={<Villages />} />
-      <Route path="/deliverers" element={<Deliverers />} />
-      <Route path="/settings" element={<Settings />} />
-      <Route path="/users" element={<Users />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/deliverer/:id" element={<DelivererDetail />} />
+        <Route path="/deliverer/:id/records" element={<RecordList />} />
+        <Route path="/villages" element={<Villages />} />
+        <Route path="/deliverers" element={<Deliverers />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/users" element={<Users />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <UpdateToast />
+    </>
   )
 }

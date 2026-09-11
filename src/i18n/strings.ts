@@ -86,6 +86,7 @@ export const dict = {
   searchRecord: { th: 'ค้นหาบ้านเลขที่ / หมายเหตุ', my: 'အိမ်နံပါတ် / မှတ်ချက် ရှာဖွေ' },
   viewList: { th: 'แบบรายการ', my: 'စာရင်းပုံစံ' },
   viewTable: { th: 'แบบตาราง', my: 'ဇယားပုံစံ' },
+  printPdf: { th: 'พิมพ์ PDF', my: 'PDF ပုံနှိပ်ရန်' },
 
   // days
   day0: { th: 'อาทิตย์', my: 'တနင်္ဂနွေ' },
@@ -115,6 +116,11 @@ export const dict = {
   adminOnly: { th: 'เฉพาะผู้ดูแลระบบ', my: 'အက်ဒမင်သာ' },
 
   confirmDelete: { th: 'ยืนยันการลบ?', my: 'ဖျက်ရန်သေချာပါသလား?' },
+
+  // pwa update
+  updateAvailable: { th: 'มีเวอร์ชันใหม่พร้อมใช้งาน', my: 'ဗားရှင်းအသစ်ရရှိနိုင်ပါပြီ' },
+  updateNow: { th: 'อัปเดตเลย', my: 'အခုပဲအပ်ဒိတ်လုပ်' },
+  offlineReady: { th: 'พร้อมใช้งานออฟไลน์แล้ว', my: 'အော့ဖ်လိုင်းသုံးရန် အသင့်ဖြစ်ပါပြီ' },
 } as const
 
 export type StringKey = keyof typeof dict

@@ -462,6 +462,88 @@ a {
   transform: scale(0.94);
 }
 
+/* ---------- speed dial (RecordList "+" -> fan-out actions) ---------- */
+.speed-dial-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 10, 28, 0.28);
+  z-index: 24;
+}
+.speed-dial {
+  position: fixed;
+  right: max(16px, calc(50% - 320px + 16px));
+  bottom: 92px;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.speed-dial-fab {
+  position: static;
+}
+.speed-dial-fab:hover {
+  transform: scale(1.06);
+}
+.speed-dial-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.speed-dial-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0;
+  transform: translateY(10px) scale(0.85);
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.speed-dial.open .speed-dial-item {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+.speed-dial-label {
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
+  color: var(--text);
+  padding: 5px 12px;
+  border-radius: var(--r-md);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: var(--sh-1);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+}
+.speed-dial-action-btn {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  border-radius: var(--r-pill);
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
+  color: var(--action);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: var(--sh-2);
+  transition: transform 0.15s ease;
+}
+.speed-dial-action-btn:hover:not(:disabled) {
+  transform: scale(1.08);
+}
+.speed-dial-action-btn:active:not(:disabled) {
+  transform: scale(0.94);
+}
+.speed-dial-action-btn:disabled {
+  color: var(--text-muted);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ---------- forms ---------- */
 .field {
   margin-bottom: 15px;
@@ -723,21 +805,74 @@ a {
 .truck-loader .truckTires svg {
   width: 24px;
 }
+/* theme-driven paint for the water-truck artwork (see Loader.tsx) */
+.truck-loader .trucksvg .wt-cab {
+  stroke: var(--navy);
+}
+.truck-loader .trucksvg .wt-navy {
+  fill: var(--navy);
+}
+.truck-loader .trucksvg .wt-accent {
+  fill: var(--accent);
+}
+.truck-loader .trucksvg .wt-navy-line {
+  stroke: var(--navy);
+  opacity: 0.6;
+}
+.truck-loader .trucksvg .wt-tank {
+  stroke: var(--navy);
+}
+.truck-loader .trucksvg .wt-band {
+  fill: var(--blue);
+  opacity: 0.55;
+}
+.truck-loader .trucksvg .wt-highlight {
+  fill: #fff;
+  opacity: 0.28;
+}
+.truck-loader .trucksvg .wt-droplet {
+  fill: var(--glass-strong);
+  stroke: var(--navy);
+}
+.truck-loader .trucksvg .wt-glass {
+  fill: var(--glass-strong);
+  stroke: var(--navy);
+  opacity: 0.92;
+}
+.truck-loader .trucksvg .wt-light {
+  fill: var(--warning);
+}
+.truck-loader .trucksvg .wt-shadow {
+  fill: var(--text);
+  opacity: 0.12;
+}
+.truck-loader .trucksvg .wt-shadow-solid {
+  fill: var(--text);
+  opacity: 0.5;
+}
+.truck-loader .tiresvg .wt-tire {
+  fill: var(--navy);
+  stroke: var(--navy);
+}
+.truck-loader .tiresvg .wt-hub {
+  fill: var(--bg-base);
+}
 .truck-loader .road {
   width: 100%;
   height: 1.5px;
-  background-color: #282828;
+  background-color: var(--text);
   position: relative;
   bottom: 0;
   align-self: flex-end;
   border-radius: 3px;
+  opacity: 0.55;
 }
 .truck-loader .road::before {
   content: '';
   position: absolute;
   width: 20px;
   height: 100%;
-  background-color: #282828;
+  background-color: var(--text);
   right: -50%;
   border-radius: 3px;
   animation: truckRoad 1.4s linear infinite;
@@ -748,7 +883,7 @@ a {
   position: absolute;
   width: 10px;
   height: 100%;
-  background-color: #282828;
+  background-color: var(--text);
   right: -65%;
   border-radius: 3px;
   animation: truckRoad 1.4s linear infinite;
@@ -759,6 +894,8 @@ a {
   bottom: 0;
   right: -90%;
   height: 90px;
+  fill: var(--text);
+  opacity: 0.55;
   animation: truckRoad 1.4s linear infinite;
 }
 @keyframes truckRoad {
@@ -1074,6 +1211,45 @@ a {
   flex: 1;
 }
 
+/* ---------- pwa update toast ---------- */
+.update-toast {
+  position: fixed;
+  left: 50%;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--glass-strong);
+  backdrop-filter: blur(var(--blur)) saturate(1.5);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.5);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-pill);
+  padding: 10px 12px 10px 18px;
+  box-shadow: var(--sh-2);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  max-width: calc(100vw - 32px);
+  animation: dialogIn 0.2s ease;
+}
+.update-toast-close {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text);
+  opacity: 0.6;
+  cursor: pointer;
+}
+.update-toast-close:hover {
+  opacity: 1;
+}
+
 /* ---------- iOS-style switch ---------- */
 .switch-row {
   display: flex;
@@ -1156,6 +1332,12 @@ a {
   justify-content: space-between;
   gap: 10px;
   padding-bottom: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+.rec-collapse-chevron {
+  transition: transform 0.18s ease;
+  flex-shrink: 0;
 }
 .rec-house {
   display: inline-flex;
@@ -1421,6 +1603,10 @@ a {
   }
 
   .fab {
+    right: 32px;
+    bottom: 32px;
+  }
+  .speed-dial {
     right: 32px;
     bottom: 32px;
   }
