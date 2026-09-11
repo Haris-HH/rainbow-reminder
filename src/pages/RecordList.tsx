@@ -299,12 +299,26 @@ export function RecordList() {
   // ปุ่ม print pdf กดไม่ได้ถ้าไม่มีข้อมูลเลย (เลือกเดือน/ปีในโมดัลทีหลัง)
   const printDisabled = records.length === 0
 
-  // ปีที่มีข้อมูลจริง (เรียงล่าสุดก่อน) ใช้เป็นตัวเลือกในโมดัล
+  // ปีที่มีข้อมูลจริง (เรียงล่าสุดก่อน) ใช้เป็นตัวเลือกในโมดัล — ไม่รวมปีในอนาคต
   const printYearOptions = (() => {
+    const currentYear = new Date().getFullYear()
     const years = new Set(records.map((r) => Number(r.delivered_at.slice(0, 4))))
-    years.add(new Date().getFullYear())
-    return [...years].sort((a, b) => b - a)
+    years.add(currentYear)
+    return [...years].filter((y) => y <= currentYear).sort((a, b) => b - a)
   })()
+
+  // เดือนที่เลือกได้สำหรับปีที่เลือกอยู่ — ถ้าเป็นปีปัจจุบันจะตัดเดือนในอนาคตออก
+  const printMonthOptions = (() => {
+    const now = new Date()
+    const maxMonth = printYear === now.getFullYear() ? now.getMonth() + 1 : 12
+    return Array.from({ length: maxMonth }, (_, i) => i + 1)
+  })()
+
+  function changePrintYear(y: number) {
+    setPrintYear(y)
+    const maxMonth = y === new Date().getFullYear() ? new Date().getMonth() + 1 : 12
+    if (printMonth > maxMonth) setPrintMonth(maxMonth)
+  }
 
   // records ของเดือน/ปีที่เลือกในโมดัล print (ไม่ยึดกับ "วันนี้" เหมือนมุมมองตาราง)
   const printMonthKey = `${printYear}-${String(printMonth).padStart(2, '0')}`
@@ -722,7 +736,7 @@ export function RecordList() {
               value={printMonth}
               onChange={(e) => setPrintMonth(Number(e.target.value))}
             >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+              {printMonthOptions.map((m) => (
                 <option key={m} value={m}>
                   {monthName(m, lang)}
                 </option>
@@ -734,7 +748,7 @@ export function RecordList() {
             <select
               className="select"
               value={printYear}
-              onChange={(e) => setPrintYear(Number(e.target.value))}
+              onChange={(e) => changePrintYear(Number(e.target.value))}
             >
               {printYearOptions.map((y) => (
                 <option key={y} value={y}>
