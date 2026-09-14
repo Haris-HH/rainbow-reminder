@@ -59,7 +59,7 @@ export function Login() {
     <div
       ref={scope}
       style={{
-        minHeight: '100vh',
+        minHeight: '100dvh',
         maxWidth: 440,
         margin: '0 auto',
         display: 'flex',
