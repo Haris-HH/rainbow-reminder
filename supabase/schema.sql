@@ -9,8 +9,12 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type app_role as enum ('admin', 'staff');
+  create type app_role as enum ('admin', 'user');
 exception when duplicate_object then null; end $$;
+
+-- เผื่อ enum เคยถูกสร้างก่อนมี role 'user' (idempotent)
+-- หมายเหตุ: ALTER TYPE ... ADD VALUE ต้องรันนอก transaction block (ห้ามอยู่ใน do $$)
+alter type app_role add value if not exists 'user';
 
 do $$ begin
   create type currency_code as enum ('THB', 'MMK');
@@ -22,7 +26,7 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   username text unique,                       -- ชื่อผู้ใช้สำหรับ login (map เป็น email ภายใน)
   full_name text not null default '',
-  role app_role not null default 'staff',
+  role app_role not null default 'user',
   lang text not null default 'th',          -- 'th' | 'my'
   currency currency_code not null default 'THB',
   theme text not null default 'light',       -- 'light' | 'dark'
@@ -122,6 +126,19 @@ as $$
   );
 $$;
 
+-- helper: เช็คว่า current user แก้ไขข้อมูลได้ไหม (admin = ได้, user = อ่านอย่างเดียว)
+create or replace function public.is_writer()
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.profiles p
+    where p.id = auth.uid() and p.role = 'admin'
+  );
+$$;
+
 -- profiles: อ่าน profile ตัวเองได้เสมอ; admin อ่านได้หมด
 drop policy if exists profiles_select on public.profiles;
 create policy profiles_select on public.profiles
@@ -141,15 +158,26 @@ drop policy if exists profiles_admin_delete on public.profiles;
 create policy profiles_admin_delete on public.profiles
   for delete using (public.is_admin());
 
--- data tables: authenticated ทำได้ทุกอย่าง
+-- data tables:
+--  - authenticated ทุกคน (รวม role 'user') อ่านได้
+--  - เฉพาะ writer (admin) เท่านั้นที่ insert/update/delete ได้
 do $$
 declare t text;
 begin
   foreach t in array array['villages','deliverers','deliverer_villages','deliverer_days','delivery_records']
   loop
+    -- policy เวอร์ชันเก่า (ถ้ามี) ต้องลบทิ้งก่อน
     execute format('drop policy if exists %I_all on public.%I', t, t);
+    execute format('drop policy if exists %I_read on public.%I', t, t);
+    execute format('drop policy if exists %I_write on public.%I', t, t);
+    -- อ่าน: ทุกคนที่ login
     execute format(
-      'create policy %I_all on public.%I for all to authenticated using (true) with check (true)',
+      'create policy %I_read on public.%I for select to authenticated using (true)',
+      t, t
+    );
+    -- เขียน: เฉพาะ writer
+    execute format(
+      'create policy %I_write on public.%I for all to authenticated using (public.is_writer()) with check (public.is_writer())',
       t, t
     );
   end loop;
@@ -171,7 +199,7 @@ begin
     new.id,
     new.raw_user_meta_data->>'username',
     coalesce(new.raw_user_meta_data->>'full_name', ''),
-    coalesce((new.raw_user_meta_data->>'role')::app_role, 'staff')
+    coalesce((new.raw_user_meta_data->>'role')::app_role, 'user')
   )
   on conflict (id) do nothing;
   return new;

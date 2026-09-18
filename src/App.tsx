@@ -13,7 +13,7 @@ import { LoadingScreen } from '@/components/LoadingScreen'
 import { UpdateToast } from '@/components/UpdateToast'
 
 export default function App() {
-  const { session, loading } = useAuth()
+  const { session, loading, canWrite } = useAuth()
   const { t } = useSettings()
 
   if (loading) {
@@ -37,8 +37,14 @@ export default function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/deliverer/:id" element={<DelivererDetail />} />
         <Route path="/deliverer/:id/records" element={<RecordList />} />
-        <Route path="/villages" element={<Villages />} />
-        <Route path="/deliverers" element={<Deliverers />} />
+        <Route
+          path="/villages"
+          element={canWrite ? <Villages /> : <Navigate to="/" replace />}
+        />
+        <Route
+          path="/deliverers"
+          element={canWrite ? <Deliverers /> : <Navigate to="/" replace />}
+        />
         <Route path="/settings" element={<Settings />} />
         <Route path="/users" element={<Users />} />
         <Route path="*" element={<Navigate to="/" replace />} />

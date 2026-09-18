@@ -10,6 +10,7 @@ import { SpeedDial } from '@/components/SpeedDial'
 import { SwipeToDelete } from '@/components/SwipeToDelete'
 import { useRealtime } from '@/hooks/useRealtime'
 import { useDialog } from '@/contexts/DialogContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { formatMoney } from '@/lib/format'
 import { dayName, monthName } from '@/i18n/strings'
 import type { DeliveryRecord, Village } from '@/types/database'
@@ -52,6 +53,7 @@ export function RecordList() {
 
   const { t, lang, currency } = useSettings()
   const { confirm, alert } = useDialog()
+  const { canWrite } = useAuth()
   const [records, setRecords] = useState<DeliveryRecord[]>([])
   const [village, setVillage] = useState<Village | null>(null)
   const [loading, setLoading] = useState(true)
@@ -359,7 +361,8 @@ export function RecordList() {
     return [...m.entries()]
   }
 
-  const actionCell = (r: DeliveryRecord) => (
+  const actionCell = (r: DeliveryRecord) =>
+    !canWrite ? null : (
     <td className="rec-act-cell" onClick={(e) => e.stopPropagation()}>
       <div className="rec-act">
         <button
@@ -420,7 +423,7 @@ export function RecordList() {
                   </colgroup>
                   <tbody>
                     {gr.map((r) => (
-                      <tr key={r.id} onClick={() => openEdit(r)}>
+                      <tr key={r.id} onClick={canWrite ? () => openEdit(r) : undefined}>
                         <td>{r.delivered_at}</td>
                         <td className="num">{r.quantity}</td>
                         <td
@@ -499,13 +502,8 @@ export function RecordList() {
           const gNet = netBalance(rows)
           const gCharges = sumCharges(rows)
           const isCollapsed = collapsedGroups.has(house)
-          return (
-            <SwipeToDelete
-              key={house}
-              label={t('deleteAll')}
-              onDelete={() => deleteHouse(rows)}
-            >
-              <div className="card rec-group">
+          const card = (
+              <div className="card rec-group" key={house}>
                 <div
                   className="rec-group-head"
                   onClick={() => toggleGroup(house)}
@@ -555,7 +553,7 @@ export function RecordList() {
                   </colgroup>
                   <tbody>
                     {rows.map((r) => (
-                      <tr key={r.id} onClick={() => openEdit(r)}>
+                      <tr key={r.id} onClick={canWrite ? () => openEdit(r) : undefined}>
                         <td>
                           {r.delivered_at}
                           <div>
@@ -583,29 +581,41 @@ export function RecordList() {
                 </table>
               )}
               </div>
+          )
+          return canWrite ? (
+            <SwipeToDelete
+              key={house}
+              label={t('deleteAll')}
+              onDelete={() => deleteHouse(rows)}
+            >
+              {card}
             </SwipeToDelete>
+          ) : (
+            card
           )
         })
       )}
 
-      <SpeedDial
-        mainLabel={t('addRecord')}
-        actions={[
-          {
-            key: 'add',
-            icon: <Plus size={20} aria-hidden />,
-            label: t('add'),
-            onClick: openAdd,
-          },
-          {
-            key: 'print',
-            icon: <Printer size={20} aria-hidden />,
-            label: t('printPdf'),
-            onClick: openPrintModal,
-            disabled: printDisabled,
-          },
-        ]}
-      />
+      {canWrite && (
+        <SpeedDial
+          mainLabel={t('addRecord')}
+          actions={[
+            {
+              key: 'add',
+              icon: <Plus size={20} aria-hidden />,
+              label: t('add'),
+              onClick: openAdd,
+            },
+            {
+              key: 'print',
+              icon: <Printer size={20} aria-hidden />,
+              label: t('printPdf'),
+              onClick: openPrintModal,
+              disabled: printDisabled,
+            },
+          ]}
+        />
+      )}
 
       <Modal
         open={modalOpen}

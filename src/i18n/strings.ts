@@ -135,7 +135,9 @@ export const dict = {
   // user mgmt
   role: { th: 'สิทธิ์', my: 'အခွင့်အရေး' },
   admin: { th: 'ผู้ดูแล', my: 'အက်ဒမင်' },
-  staff: { th: 'พนักงาน', my: 'ဝန်ထမ်း' },
+  roleUser: { th: 'ผู้ใช้ทั่วไป', my: 'အသုံးပြုသူ' },
+  usernameField: { th: 'Username', my: 'Username' },
+  nickname: { th: 'ชื่อเรียก', my: 'ခေါ်ဝေါ်အမည်' },
   newPassword: { th: 'รหัสผ่านใหม่ (เว้นว่างถ้าไม่เปลี่ยน)', my: 'စကားဝှက်အသစ်' },
   adminOnly: { th: 'เฉพาะผู้ดูแลระบบ', my: 'အက်ဒမင်သာ' },
 

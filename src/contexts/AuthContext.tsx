@@ -14,6 +14,8 @@ interface AuthValue {
   profile: Profile | null
   loading: boolean
   isAdmin: boolean
+  // role 'user' = ผู้ใช้ทั่วไป (อ่านอย่างเดียว: เพิ่ม/ลบ/แก้ไข/พิมพ์ไม่ได้)
+  canWrite: boolean
   signIn: (email: string, password: string) => Promise<{ error?: string }>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
@@ -57,6 +59,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     profile,
     loading,
     isAdmin: profile?.role === 'admin',
+    // เขียนข้อมูลได้เฉพาะผู้ดูแล (ผู้ใช้ทั่วไป = อ่านอย่างเดียว)
+    canWrite: profile?.role === 'admin',
     async signIn(email, password) {
       const { error } = await supabase.auth.signInWithPassword({
         email,

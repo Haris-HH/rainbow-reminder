@@ -1,5 +1,5 @@
 export type Currency = 'THB'
-export type AppRole = 'admin' | 'staff'
+export type AppRole = 'admin' | 'user'
 export type DelivererMode = 'village' | 'day'
 export type Lang = 'th' | 'my'
 export type Theme = 'light' | 'dark'

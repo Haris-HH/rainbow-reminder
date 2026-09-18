@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
         email,
         password,
         email_confirm: true,
-        user_metadata: { full_name, role: role ?? 'staff', username: uname },
+        user_metadata: { full_name, role: role ?? 'user', username: uname },
       })
       if (error) return json({ error: error.message }, 400)
       return json({ user: data.user })

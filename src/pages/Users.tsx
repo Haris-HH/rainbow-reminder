@@ -24,7 +24,7 @@ interface FormState {
 const blank = (): FormState => ({
   username: '',
   full_name: '',
-  role: 'staff',
+  role: 'user',
   password: '',
 })
 
@@ -148,7 +148,7 @@ export function Users() {
               <span className="sub">
                 {u.full_name ? `${u.full_name} · ` : ''}
                 <span className="badge role">
-                  {u.role === 'admin' ? t('admin') : t('staff')}
+                  {u.role === 'admin' ? t('admin') : t('roleUser')}
                 </span>
               </span>
             </span>
@@ -165,36 +165,36 @@ export function Users() {
         title={form.id ? t('edit') : t('add')}
         onClose={() => setOpen(false)}
       >
+          <div className="field">
+            <label>{t('nickname')}</label>
+            <input
+              className="input"
+              value={form.full_name}
+              onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+              placeholder="เช่น นิค"
+            />
+          </div>
           {!form.id && (
             <div className="field">
-              <label>{t('username')}</label>
+              <label>{t('usernameField')}</label>
               <input
                 className="input"
                 type="text"
                 autoCapitalize="none"
                 value={form.username}
                 onChange={(e) => setForm({ ...form, username: e.target.value })}
-                placeholder="เช่น nick"
               />
             </div>
           )}
-          <div className="field">
-            <label>{t('name')}</label>
-            <input
-              className="input"
-              value={form.full_name}
-              onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-            />
-          </div>
           <div className="field">
             <label>{t('role')}</label>
             <div className="segmented">
               <button
                 type="button"
-                className={form.role === 'staff' ? 'on' : ''}
-                onClick={() => setForm({ ...form, role: 'staff' })}
+                className={form.role === 'user' ? 'on' : ''}
+                onClick={() => setForm({ ...form, role: 'user' })}
               >
-                {t('staff')}
+                {t('roleUser')}
               </button>
               <button
                 type="button"

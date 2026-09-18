@@ -120,7 +120,7 @@ export function Settings() {
       {profile && (
         <p className="muted" style={{ textAlign: 'center', marginTop: 16 }}>
           {profile.full_name} ·{' '}
-          {profile.role === 'admin' ? t('admin') : t('staff')}
+          {profile.role === 'admin' ? t('admin') : t('roleUser')}
         </p>
       )}
     </Layout>

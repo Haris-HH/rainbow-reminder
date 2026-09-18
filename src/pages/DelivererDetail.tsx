@@ -10,6 +10,7 @@ import { Reveal } from '@/components/Reveal'
 import { Fab } from '@/components/Fab'
 import { useRealtime } from '@/hooks/useRealtime'
 import { useDialog } from '@/contexts/DialogContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { formatMoney } from '@/lib/format'
 import { dayName } from '@/i18n/strings'
 import type { Deliverer, DeliveryRecord, Village } from '@/types/database'
@@ -21,6 +22,7 @@ export function DelivererDetail() {
   const { id } = useParams<{ id: string }>()
   const { t, lang, currency } = useSettings()
   const { confirm, alert } = useDialog()
+  const { canWrite } = useAuth()
   const navigate = useNavigate()
 
   const [deliverer, setDeliverer] = useState<Deliverer | null>(null)
@@ -199,16 +201,18 @@ export function DelivererDetail() {
                     )}
                   </span>
                 </span>
-                <button
-                  className="row-del"
-                  aria-label={t('remove')}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    removeVillage(v.id)
-                  }}
-                >
-                  <Trash2 size={17} aria-hidden />
-                </button>
+                {canWrite && (
+                  <button
+                    className="row-del"
+                    aria-label={t('remove')}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removeVillage(v.id)
+                    }}
+                  >
+                    <Trash2 size={17} aria-hidden />
+                  </button>
+                )}
                 <ChevronRight className="chev" size={20} aria-hidden />
               </div>
             ))}
@@ -237,7 +241,7 @@ export function DelivererDetail() {
                   )}
                 </span>
               </span>
-              {!recordDays.includes(day) && (
+              {canWrite && !recordDays.includes(day) && (
                 <button
                   className="row-del"
                   aria-label={t('remove')}
@@ -255,7 +259,7 @@ export function DelivererDetail() {
         </Reveal>
       )}
 
-      <Fab onClick={openAssign} label="assign" />
+      {canWrite && <Fab onClick={openAssign} label="assign" />}
 
       <Modal
         open={assignOpen}
