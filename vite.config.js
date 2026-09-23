@@ -16,14 +16,14 @@ export default defineConfig({
     plugins: [
         react(),
         VitePWA({
-            registerType: 'autoUpdate',
+            registerType: 'prompt',
             includeAssets: ['favicon.svg', 'rainbow-logo.jpg'],
             manifest: {
                 name: 'Rainbow Drinking Water',
                 short_name: 'Rainbow',
                 description: 'ระบบเก็บยอดค้างค่าน้ำ Rainbow Drinking Water',
-                theme_color: '#2D1B4E',
-                background_color: '#ffffff',
+                theme_color: '#221e1a',
+                background_color: '#f5f0e4',
                 display: 'standalone',
                 orientation: 'portrait',
                 start_url: '/',
@@ -48,6 +48,7 @@ export default defineConfig({
             },
             workbox: {
                 globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,woff2}'],
+                maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
             },
         }),
     ],
